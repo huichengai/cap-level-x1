@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#050a0e" />
+  <meta name="description" content="电容式液位计 CAP-LEVEL X1 — Three.js 交互式拆解可视化" />
+  <title>CAP-LEVEL X1 // 电容式液位计拆解可视化</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23050a0e'/%3E%3Cpath d='M18 14h28l-2 25-5 10H25l-5-10-2-25Z' fill='none' stroke='%2369edff' stroke-width='2'/%3E%3Cpath d='M22 34c4-2 8 2 12 0s7 1 9-1v7l-4 8H27l-4-8v-6Z' fill='%2338cfff' fill-opacity='.75'/%3E%3Cpath d='M32 8v14M28 8h8' stroke='%23e9fdff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/addons/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="app" id="app">
+    <canvas id="stage" aria-label="CAP-LEVEL X1 电容式液位计三维拆解视图"></canvas>
+
+    <div class="fx fx--grid" aria-hidden="true"></div>
+    <div class="fx fx--scan" aria-hidden="true"></div>
+    <div class="fx fx--vignette" aria-hidden="true"></div>
+    <div class="fx fx--grain" aria-hidden="true"></div>
+
+    <div id="labelLayer" class="label-layer" aria-live="polite"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none">
+            <path d="M10 7h28l-2 25.5-5.5 8.5H17.5L12 32.5 10 7Z" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M13.3 28.8c4.2-2.6 7.5 1.9 11.2 0 3.3-1.7 6.1.8 8.9-1.2l-1.2 8.1-4.3 6.2H17.8l-4-6.4-.5-6.7Z" fill="currentColor" fill-opacity=".23" stroke="currentColor" stroke-width=".8"/>
+            <path d="M24 2v8M20 2h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            <circle cx="24" cy="34" r="1.5" fill="currentColor"/>
+            <path d="M16.8 12h14.4M16.4 16h15.2" stroke="currentColor" stroke-width=".7" opacity=".45"/>
+          </svg>
+        </div>
+        <div class="brand__copy">
+          <span class="brand__name">AQUA METRIX</span>
+          <span class="brand__sub">PRECISION LEVEL SYSTEMS</span>
+        </div>
+      </div>
+
+      <div class="project-chip" aria-label="当前设备">
+        <span class="project-chip__eyebrow">SENSOR / CLX-2600</span>
+        <strong>CAP<span>LEVEL</span> X1</strong>
+        <span class="project-chip__line" aria-hidden="true"></span>
+        <span class="project-chip__state" id="projectState">LIVE PROCESS</span>
+      </div>
+
+      <div class="top-meta">
+        <div class="telemetry">
+          <span class="telemetry__label">RENDER</span>
+          <span class="telemetry__value"><b id="fpsValue">60</b> FPS</span>
+        </div>
+        <div class="telemetry telemetry--signal">
+          <span class="telemetry__label">LOOP CURRENT</span>
+          <span class="telemetry__value"><b id="topCurrent">13.34</b> mA</span>
+        </div>
+        <div class="live-pill"><span class="live-pill__dot"></span><span id="livePillText">SIGNAL OK</span></div>
+        <button class="icon-btn" id="fullscreenBtn" type="button" aria-label="切换全屏" title="全屏">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M8.5 4H4v4.5M15.5 4H20v4.5M20 15.5V20h-4.5M4 15.5V20h4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="stage-caption" aria-hidden="true">
+      <span class="stage-caption__index">FIG. 01</span>
+      <span class="stage-caption__line"></span>
+      <span>DRAG TO ORBIT / SCROLL TO ZOOM</span>
+      <span class="stage-caption__separator">·</span>
+      <span id="stageFluid">H₂O / εr 80.1</span>
+    </div>
+
+    <aside class="panel left-panel" aria-label="零件列表">
+      <div class="panel__eyebrow">
+        <span><i class="mini-dot"></i>COMPONENT INDEX</span>
+        <span id="partCount">14 MODULES</span>
+      </div>
+
+      <div class="device-intro">
+        <div class="device-intro__model">MODEL CLX-2600 / HART</div>
+        <h1>CAPA <span>LEVEL</span></h1>
+        <p>电容式液位计 · 拆解可视化</p>
+        <div class="device-stats">
+          <div><b>2,600</b><span>MM RANGE</span></div>
+          <div><b>±0.5</b><span>% FS</span></div>
+          <div><b>4–20</b><span>MA</span></div>
+        </div>
+      </div>
+
+      <div class="filter-row" role="tablist" aria-label="零件分类筛选">
+        <button class="filter is-active" data-filter="all" role="tab" aria-selected="true" type="button">全部</button>
+        <button class="filter" data-filter="sensor" role="tab" aria-selected="false" type="button">传感</button>
+        <button class="filter" data-filter="structure" role="tab" aria-selected="false" type="button">结构</button>
+        <button class="filter" data-filter="electronics" role="tab" aria-selected="false" type="button">电子</button>
+        <button class="filter" data-filter="fluid" role="tab" aria-selected="false" type="button">流体</button>
+      </div>
+
+      <div class="parts-scroll" id="partsList" role="list"></div>
+
+      <div class="panel__foot">
+        <span><i class="mini-dot mini-dot--green"></i>PROCESS SEALED</span>
+        <span class="mono">CAL. 2026.03</span>
+      </div>
+    </aside>
+
+    <aside class="panel right-panel" aria-label="零件信息与实时测量">
+      <div class="panel__eyebrow">
+        <span><i class="mini-dot"></i>PROCESS ANALYSIS</span>
+        <span id="selectionCode" class="mono">ST-01</span>
+      </div>
+
+      <div class="selection-head">
+        <div class="selection-index" id="selectionIndex">01</div>
+        <div class="selection-title">
+          <span class="selection-category" id="selectionCategory">STRUCTURE / 结构</span>
+          <h2 id="selectionName">高透光储液罐</h2>
+          <p id="selectionEnglish">ACRYLIC RESERVOIR</p>
+        </div>
+        <span class="selection-crosshair" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      </div>
+
+      <section class="live-card" aria-label="实时测量">
+        <div class="live-card__head">
+          <span><i class="live-pulse"></i>LIVE MEASUREMENT</span>
+          <span class="mono" id="liveMedium">H₂O / WATER</span>
+        </div>
+        <div class="live-main">
+          <div class="level-dial" id="levelDial">
+            <svg viewBox="0 0 112 112" role="img" aria-label="液位百分比">
+              <circle class="dial-track" cx="56" cy="56" r="45"/>
+              <circle class="dial-arc" id="levelArc" cx="56" cy="56" r="45"/>
+              <circle class="dial-inner" cx="56" cy="56" r="35"/>
+            </svg>
+            <div class="level-dial__readout">
+              <span>LEVEL</span>
+              <b id="levelPercent">58.0</b>
+              <em>%</em>
+            </div>
+            <div class="level-dial__mm"><span id="levelMm">1,508</span> mm</div>
+          </div>
+
+          <div class="live-readouts">
+            <div class="live-readout">
+              <span>CAPACITANCE</span>
+              <b><em id="liveCap">168.4</em> <small>pF</small></b>
+            </div>
+            <div class="live-readout">
+              <span>LOOP CURRENT</span>
+              <b><em id="liveCurrent">13.28</em> <small>mA</small></b>
+            </div>
+            <div class="live-readout">
+              <span>DIELECTRIC εr</span>
+              <b><em id="liveEr">80.1</em> <small>εr</small></b>
+            </div>
+          </div>
+        </div>
+
+        <div class="fluid-legend">
+          <div class="fluid-legend__labels">
+            <span id="legendMaterial">纯水</span>
+            <span>浓度 <b id="legendConcentration">0%</b></span>
+          </div>
+          <div class="fluid-gradient" id="fluidGradient">
+            <i class="fluid-marker" id="fluidMarker"></i>
+          </div>
+        </div>
+      </section>
+
+      <div class="spec-grid" id="specGrid"></div>
+
+      <div class="info-block">
+        <div class="info-block__label"><span>FUNCTION BRIEF</span><i></i></div>
+        <p class="info-block__text" id="selectionDescription"></p>
+      </div>
+
+      <div class="material-row">
+        <div>
+          <span class="material-row__label">MATERIAL</span>
+          <strong id="selectionMaterial">—</strong>
+        </div>
+        <div>
+          <span class="material-row__label">MASS</span>
+          <strong id="selectionMass">—</strong>
+        </div>
+      </div>
+
+      <div class="sync-meter">
+        <div class="sync-meter__top"><span>CALIBRATION CONFIDENCE</span><b id="syncValue">99.8%</b></div>
+        <div class="sync-meter__track"><span id="syncBar" style="width:99.8%"></span></div>
+      </div>
+
+      <div class="panel-actions">
+        <button class="panel-action panel-action--primary" id="focusBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.2"/></svg>
+          聚焦零件
+        </button>
+        <button class="panel-action" id="resetBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 11a8 8 0 1 1 2.5 5.8M4 5v6h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          全景复位
+        </button>
+      </div>
+    </aside>
+
+    <footer class="bottom-bar">
+      <div class="explode-cluster">
+        <button class="explode-btn" id="explodeBtn" type="button" aria-pressed="false">
+          <span class="explode-btn__icon">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 3 5 7v10l7 4 7-4V7l-7-4Z" stroke="currentColor" stroke-width="1.2"/>
+              <path class="explode-btn__arrows" d="m9 10-2-2m8 2 2-2M9 14l-2 2m8-2 2 2M12 5v3M12 16v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="explode-btn__copy">
+            <small>DISASSEMBLY</small>
+            <strong id="explodeLabel">一键拆解</strong>
+          </span>
+          <span class="explode-btn__key">SPACE</span>
+        </button>
+        <div class="progress-control">
+          <div class="progress-control__head">
+            <span>EXPLOSION SEQUENCE</span>
+            <output id="explodeValue" for="explodeSlider">0%</output>
+          </div>
+          <input id="explodeSlider" class="range" type="range" min="0" max="100" value="0" step="1" aria-label="拆解进度" />
+          <div class="progress-control__ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+
+      <div class="level-cluster">
+        <div class="cluster-head">
+          <span><i class="cluster-dot" id="flowDot"></i>LIQUID LEVEL</span>
+          <output id="levelValue">58%</output>
+        </div>
+        <div class="level-row">
+          <button class="flow-btn" id="drainBtn" type="button" title="排出液体">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v13m0 0 5-5m-5 5-5-5M5 21h14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <input id="levelSlider" class="range range--fluid" type="range" min="0" max="100" value="58" step="1" aria-label="液位高度" />
+          <button class="flow-btn" id="fillBtn" type="button" title="注入液体">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20V7m0 0 5 5m-5-5-5 5M5 3h14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="level-meta">
+          <span id="flowStatus">STABLE</span>
+          <span class="mono" id="levelFlow">0.0 L/min</span>
+        </div>
+      </div>
+
+      <div class="medium-cluster">
+        <div class="cluster-head">
+          <span>MEDIUM / CONCENTRATION</span>
+          <output id="concentrationValue">0%</output>
+        </div>
+        <div class="medium-chips" id="mediumChips" role="group" aria-label="液体材质">
+          <button class="medium-chip is-active" data-medium="water" type="button"><i></i>水</button>
+          <button class="medium-chip" data-medium="ethanol" type="button"><i></i>乙醇</button>
+          <button class="medium-chip" data-medium="glycol" type="button"><i></i>丙二醇</button>
+          <button class="medium-chip" data-medium="oil" type="button"><i></i>液压油</button>
+        </div>
+        <div class="concentration-row">
+          <input id="concentrationSlider" class="range range--fluid" type="range" min="0" max="100" value="0" step="1" aria-label="液体浓度" />
+          <span class="concentration-readout" id="epsilonValue">εr 80.1</span>
+        </div>
+      </div>
+
+      <div class="view-cluster">
+        <div class="cluster-head">
+          <span>VIEWPORT / SYSTEM</span>
+          <span class="mono" id="viewModeLabel">ORBIT</span>
+        </div>
+        <div class="view-tools">
+          <div class="view-buttons" role="group" aria-label="视角切换">
+            <button class="view-btn is-active" type="button" data-view="hero" title="三分之四视角">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m4 8 8-4 8 4v8l-8 4-8-4V8Z" stroke="currentColor" stroke-width="1.2"/><path d="M4 8l8 4 8-4M12 12v8" stroke="currentColor" stroke-width="1.2"/></svg>
+              环绕
+            </button>
+            <button class="view-btn" type="button" data-view="front" title="正视角">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 4h8v16H8zM5 20h14" stroke="currentColor" stroke-width="1.2"/><path d="M12 4v5" stroke="currentColor" stroke-width="1.2"/></svg>
+              正视
+            </button>
+            <button class="view-btn" type="button" data-view="side" title="侧视角">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 8h16v8H4zM7 20h10" stroke="currentColor" stroke-width="1.2"/><path d="M4 8V5h5" stroke="currentColor" stroke-width="1.2"/></svg>
+              侧视
+            </button>
+            <button class="view-btn" type="button" data-view="top" title="俯视角">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="12" r="2.2" stroke="currentColor" stroke-width="1.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="1.2"/></svg>
+              俯视
+            </button>
+          </div>
+          <div class="tool-buttons">
+            <button class="tool-btn is-active" id="autoRotateBtn" type="button" aria-pressed="true" title="自动旋转">
+              <span class="tool-btn__dot"></span>
+              <span>旋转</span>
+            </button>
+            <button class="tool-btn" id="snapshotBtn" type="button" title="保存快照">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4V8Z" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="13" r="3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+              <span>快照</span>
+            </button>
+          </div>
+        </div>
+        <div class="hotkey-hint">SPACE 拆解 · F 注入 · G 排出 · R 复位</div>
+      </div>
+    </footer>
+
+    <div class="boot" id="boot">
+      <div class="boot__noise" aria-hidden="true"></div>
+      <div class="boot__card">
+        <div class="boot__mark" aria-hidden="true">
+          <svg viewBox="0 0 72 72" fill="none">
+            <path d="M17 10h38l-2.6 36-7.2 14H26.8l-7.2-14L17 10Z" stroke="#74f4ff" stroke-width="1.2"/>
+            <path d="M21 38c5-4 9 3 15 0 5-2.6 9 1 13-2.4l-1.8 13.2-5.5 10.2H28l-5.6-10.6L21 38Z" fill="#42dcff" fill-opacity=".28" stroke="#74f4ff" stroke-width=".8"/>
+            <path d="M36 3v11M31 3h10" stroke="#dffeff" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M26 17h20M25.5 22h21" stroke="#74f4ff" stroke-width=".7" opacity=".45"/>
+            <circle cx="36" cy="46" r="2" fill="#bffaff"/>
+          </svg>
+        </div>
+        <span class="boot__eyebrow">AQUA METRIX / SENSOR LAB</span>
+        <h2>CAP<span>LEVEL</span> X1</h2>
+        <p>INITIALIZING CAPACITIVE LEVEL ASSEMBLY</p>
+        <div class="boot__bar"><span id="bootBar"></span></div>
+        <div class="boot__meta">
+          <span id="bootStatus">LOADING GEOMETRY</span>
+          <span id="bootPercent" class="mono">00%</span>
+        </div>
+      </div>
+      <div class="boot__corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <noscript><div class="noscript">该 3D 可视化页面需要启用 JavaScript。</div></noscript>
+  </div>
+
+  <script>
+    (() => {
+      const setBootError = (status, percent) => {
+        const boot = document.getElementById('boot');
+        const statusNode = document.getElementById('bootStatus');
+        const percentNode = document.getElementById('bootPercent');
+        if (!boot || !statusNode || !percentNode) return;
+        boot.classList.add('is-error');
+        statusNode.textContent = status;
+        percentNode.textContent = percent;
+      };
+
+      window.__CAPLEVEL_BOOTED = false;
+
+      if (window.location.protocol === 'file:') {
+        setBootError('请用 HTTP 访问：start.bat / 部署网址', 'FILE://');
+        return;
+      }
+
+      window.addEventListener('error', () => {
+        if (!window.__CAPLEVEL_BOOTED) {
+          setBootError('启动失败：检查 app.js / vendor 是否完整', 'ERR');
+        }
+      }, true);
+
+      window.addEventListener('unhandledrejection', () => {
+        if (!window.__CAPLEVEL_BOOTED) {
+          setBootError('启动失败：检查浏览器 WebGL 支持', 'ERR');
+        }
+      });
+
+      window.setTimeout(() => {
+        if (!window.__CAPLEVEL_BOOTED) {
+          setBootError('启动超时：请用 Chrome / Edge 并开启 WebGL', 'TIMEOUT');
+        }
+      }, 12000);
+    })();
+  </script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
